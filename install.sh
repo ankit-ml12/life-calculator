@@ -3,6 +3,11 @@
 # Life Calculator Installation Script for Kali Linux
 echo "Installing Life Calculator..."
 
+# Install system dependency for idle detection
+echo "Installing system dependencies..."
+sudo apt update
+sudo apt install -y xprintidle
+
 # Create installation directory
 INSTALL_DIR="$HOME/.local/share/life-calculator"
 mkdir -p "$INSTALL_DIR"

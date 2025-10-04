@@ -1,1 +1,4 @@
-# No external dependencies - uses built-in tkinter
+# System dependencies (install via package manager):
+# sudo apt install xprintidle  # For idle time detection on Linux
+
+# Python dependencies - uses built-in tkinter only

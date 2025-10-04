@@ -1,6 +1,8 @@
 import tkinter as tk
 from datetime import datetime
 import time
+import subprocess
+import threading
 
 START_DATE = datetime(1999, 2, 14)
 
@@ -8,20 +10,16 @@ START_DATE = datetime(1999, 2, 14)
 prev_values_80 = {'years': 0, 'months': 0, 'days': 0, 'hours': 0, 'minutes': 0, 'seconds': 0}
 prev_values_30 = {'years': 0, 'months': 0, 'days': 0, 'hours': 0, 'minutes': 0, 'seconds': 0}
 
-def calculate_remaining_time(target_years):
+# Inactivity tracking
+last_activity_time = time.time()
+is_window_on_top = False
+
+def calculate_elapsed_time():
+    """Calculate elapsed time from birth date - same for both timers"""
     now = datetime.now()
+    elapsed = now - START_DATE
     
-    # Calculate target date (birth date + target years)
-    target_date = datetime(START_DATE.year + target_years, START_DATE.month, START_DATE.day)
-    
-    # Calculate remaining time
-    if now >= target_date:
-        # Time has passed, show zeros
-        return 0, 0, 0, 0, 0, 0
-    
-    remaining = target_date - now
-    total_seconds = int(remaining.total_seconds())
-    
+    total_seconds = int(elapsed.total_seconds())
     years, remaining_secs = divmod(total_seconds, 31536000)  # 365 days * 24 hours * 3600 seconds
     months, remaining_secs = divmod(remaining_secs, 2592000)  # 30 days * 24 hours * 3600 seconds
     days, remaining_secs = divmod(remaining_secs, 86400)     # 24 hours * 3600 seconds
@@ -29,6 +27,54 @@ def calculate_remaining_time(target_years):
     minutes, seconds = divmod(remaining_secs, 60)
     
     return years, months, days, hours, minutes, seconds
+
+def calculate_remaining_time(target_years):
+    """Calculate remaining time until target age"""
+    now = datetime.now()
+    target_date = datetime(START_DATE.year + target_years, START_DATE.month, START_DATE.day)
+    
+    if now >= target_date:
+        return 0, 0, 0, 0, 0, 0
+    
+    remaining = target_date - now
+    total_seconds = int(remaining.total_seconds())
+    
+    years, remaining_secs = divmod(total_seconds, 31536000)
+    months, remaining_secs = divmod(remaining_secs, 2592000)
+    days, remaining_secs = divmod(remaining_secs, 86400)
+    hours, remaining_secs = divmod(remaining_secs, 3600)
+    minutes, seconds = divmod(remaining_secs, 60)
+    
+    return years, months, days, hours, minutes, seconds
+
+def get_idle_time():
+    """Get system idle time in seconds"""
+    try:
+        result = subprocess.run(['xprintidle'], capture_output=True, text=True)
+        if result.returncode == 0:
+            return int(result.stdout.strip()) / 1000  # Convert ms to seconds
+    except:
+        pass
+    return 0
+
+def check_inactivity():
+    """Check if system is inactive and bring window to top"""
+    global is_window_on_top
+    
+    idle_time = get_idle_time()
+    
+    if idle_time > 120:  # 2 minutes = 120 seconds
+        if not is_window_on_top:
+            root.attributes('-topmost', True)
+            root.lift()
+            is_window_on_top = True
+    else:
+        if is_window_on_top:
+            root.attributes('-topmost', False)
+            is_window_on_top = False
+    
+    # Check again in 10 seconds
+    root.after(10000, check_inactivity)
 
 def flip_animation(number_label, unit_label, old_value, new_value):
     """Create flip animation effect when value changes"""
@@ -50,13 +96,20 @@ def flip_animation(number_label, unit_label, old_value, new_value):
 def update_display():
     global prev_values_80, prev_values_30
     
-    # Calculate remaining time for both displays
-    y80, m80, d80, h80, min80, s80 = calculate_remaining_time(80)
-    y30, m30, d30, h30, min30, s30 = calculate_remaining_time(30)
+    # Calculate elapsed time (same for both displays)
+    elapsed_y, elapsed_m, elapsed_d, elapsed_h, elapsed_min, elapsed_s = calculate_elapsed_time()
     
-    # Current values for timers
-    current_80 = {'years': y80, 'months': m80, 'days': d80, 'hours': h80, 'minutes': min80, 'seconds': s80}
-    current_30 = {'years': y30, 'months': m30, 'days': d30, 'hours': h30, 'minutes': min30, 'seconds': s30}
+    # Calculate remaining time for 80 years
+    remain_80_y, remain_80_m, remain_80_d, remain_80_h, remain_80_min, remain_80_s = calculate_remaining_time(80)
+    
+    # Calculate remaining time for 30 years  
+    remain_30_y, remain_30_m, remain_30_d, remain_30_h, remain_30_min, remain_30_s = calculate_remaining_time(30)
+    
+    # Top shows remaining time until 80, Bottom shows remaining time until 30
+    current_80 = {'years': remain_80_y, 'months': remain_80_m, 'days': remain_80_d, 
+                  'hours': remain_80_h, 'minutes': remain_80_min, 'seconds': remain_80_s}
+    current_30 = {'years': remain_30_y, 'months': remain_30_m, 'days': remain_30_d, 
+                  'hours': remain_30_h, 'minutes': remain_30_min, 'seconds': remain_30_s}
     
     # Update 80 year countdown blocks with flip animation
     top_blocks = [
@@ -158,11 +211,11 @@ top_sec_unit.config(text="SECONDS")
 
 # SEPARATOR LINE
 separator = tk.Frame(main_frame, bg='#333333', height=1)
-separator.pack(fill='x', pady=10)
+separator.pack(fill='x', pady=5)
 
 # BOTTOM SECTION - 30 YEAR COUNTDOWN
 bottom_frame = tk.Frame(main_frame, bg='#000000')
-bottom_frame.pack(fill='both', expand=True, pady=(10, 0))
+bottom_frame.pack(fill='both', expand=True, pady=(5, 0))
 
 # Bottom blocks container - horizontal layout
 bottom_blocks_frame = tk.Frame(bottom_frame, bg='#000000')
@@ -189,6 +242,9 @@ bottom_sec_unit.config(text="SECONDS")
 
 # Start the timer
 update_display()
+
+# Start inactivity checking
+check_inactivity()
 
 # Start the GUI
 root.mainloop()
