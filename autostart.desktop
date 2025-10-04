@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Exec=python3 %h/.local/share/life-calculator/src/main.py
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name=Life Calculator
+Comment=Minimal life timer showing elapsed time from Feb 14, 1999
+Icon=clock
+Categories=Utility;

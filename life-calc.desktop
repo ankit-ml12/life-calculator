@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Life Calculator
+Comment=Minimal life timer from Feb 14, 1999
+Exec=python3 %h/.local/share/life-calculator/src/main.py
+Type=Application
+Terminal=false
+StartupNotify=true
+Icon=clock
+Categories=Utility;
+Keywords=timer;life;calculator;
